@@ -9,6 +9,11 @@ use ratatui::{
     widgets::{Paragraph, Widget},
 };
 
+enum UiState {
+    Latest,
+    Detach,
+}
+
 fn main() {
     let mut env = Environment::new_with_agent_func(50, 50, 0.4, |c| {
         let rand: f32 = thread_rng().gen();
@@ -30,16 +35,47 @@ fn main() {
 
     color_eyre::install().unwrap();
     let mut term = ratatui::init();
-    let mut step = 0;
+    let mut buffer: Vec<Metric> = Vec::new();
+    let mut ui_state = UiState::Latest;
+    let mut detach_step = 0;
 
     loop {
-        let result = env.step();
-        step += 1;
+        buffer.push(env.step());
+        let step = match ui_state {
+            UiState::Latest => buffer.len().saturating_sub(1),
+            UiState::Detach => detach_step,
+        };
+
         let _ = term.draw(|frame| {
-            frame.render_widget(strategy_canvas(step, result), frame.area());
+            frame.render_widget(strategy_canvas(step, buffer[step].clone()), frame.area());
         });
         if event::poll(Duration::from_millis(10)).unwrap() {
             if let Ok(Event::Key(key)) = event::read() {
+                match key.code {
+                    KeyCode::Char('q') => {
+                        break;
+                    }
+                    KeyCode::Left => match ui_state {
+                        UiState::Latest => {
+                            ui_state = UiState::Detach;
+                            detach_step = buffer.len().saturating_sub(0);
+                        }
+                        UiState::Detach => {
+                            detach_step = detach_step.saturating_sub(1);
+                        }
+                    },
+                    KeyCode::Right => match ui_state {
+                        UiState::Detach => {
+                            detach_step += 1;
+                            detach_step = detach_step.min(buffer.len().saturating_sub(0));
+                        }
+                        _ => {}
+                    },
+                    KeyCode::Esc => {
+                        ui_state = UiState::Latest;
+                    }
+                    _ => {}
+                }
                 if matches!(key.code, KeyCode::Char('q')) {
                     break;
                 }
