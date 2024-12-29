@@ -1,8 +1,14 @@
-use std::{fmt::Debug, thread::sleep, time::Duration};
+use std::{
+    fmt::Debug,
+    sync::mpsc::{self, Receiver, Sender},
+    thread::{sleep, spawn},
+    time::Duration,
+};
 
 use coop::{Agent, Environment, Metric, Strategy};
 use rand::{thread_rng, Rng};
 use ratatui::{
+    crossterm::event::{self, Event, KeyCode},
     style::{Color, Stylize},
     text::Line,
     widgets::{Paragraph, Widget},
@@ -29,14 +35,21 @@ fn main() {
 
     color_eyre::install().unwrap();
     let mut term = ratatui::init();
+    let mut step = 0;
 
-    for step in 1..1000 {
+    loop {
         let result = env.step();
-        term.draw(|frame| {
+        step += 1;
+        let _ = term.draw(|frame| {
             frame.render_widget(strategy_canvas(step, result), frame.area());
-        })
-        .unwrap();
-        sleep(Duration::from_millis(10));
+        });
+        if event::poll(Duration::from_millis(10)).unwrap() {
+            if let Ok(Event::Key(key)) = event::read() {
+                if matches!(key.code, KeyCode::Char('q')) {
+                    break;
+                }
+            }
+        }
     }
 
     ratatui::restore();
