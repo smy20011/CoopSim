@@ -9,3 +9,6 @@ edition = "2021"
 color-eyre = "0.6.3"
 rand = "0.8.5"
 ratatui = "0.29.0"
+
+[profile.release]
+opt-level = 3
