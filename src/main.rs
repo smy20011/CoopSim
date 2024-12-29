@@ -1,9 +1,4 @@
-use std::{
-    fmt::Debug,
-    sync::mpsc::{self, Receiver, Sender},
-    thread::{sleep, spawn},
-    time::Duration,
-};
+use std::time::Duration;
 
 use coop::{Agent, Environment, Metric, Strategy};
 use rand::{thread_rng, Rng};
@@ -15,11 +10,11 @@ use ratatui::{
 };
 
 fn main() {
-    let mut env = Environment::new_with_agent_func(50, 50, |c| {
+    let mut env = Environment::new_with_agent_func(50, 50, 0.4, |c| {
         let rand: f32 = thread_rng().gen();
-        let prob_coop = 0.50;
+        let prob_coop = 0.10;
         let prob_random = 0.00;
-        let prob_tic = 0.0;
+        let prob_tic = 0.40;
 
         let strategy = if rand < prob_coop {
             Strategy::Coop

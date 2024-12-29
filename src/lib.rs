@@ -3,12 +3,26 @@ use std::{
     usize,
 };
 
-use rand::{seq::SliceRandom, thread_rng};
+use rand::{seq::SliceRandom, thread_rng, Rng};
 
 #[derive(Clone, Copy, Eq, PartialEq, Debug)]
 pub enum Action {
     Coop,
     Deflect,
+}
+
+impl Action {
+    fn with_noise(&self, prob: f32) -> Action {
+        let mut rng = thread_rng();
+        if rng.gen::<f32>() < prob {
+            match *self {
+                Action::Coop => Action::Deflect,
+                Action::Deflect => Action::Coop,
+            }
+        } else {
+            *self
+        }
+    }
 }
 
 #[derive(Clone, Copy, Eq, PartialEq, Debug, Hash, PartialOrd, Ord)]
@@ -98,6 +112,7 @@ pub struct Metric {
 pub struct Environment {
     num_row: usize,
     num_col: usize,
+    noise: f32,
     grid: Vec<Agent>,
 }
 
@@ -112,10 +127,11 @@ impl Environment {
                 actions.insert((curr.coord, n.coord), curr.get_action(n));
             }
         });
+        let noise = self.noise;
         self.for_each_cell(|curr, neighbors| {
             for n in neighbors {
-                let my_action = actions[&(curr.coord, n.coord)];
-                let their_action = actions[&(n.coord, curr.coord)];
+                let my_action = actions[&(curr.coord, n.coord)].with_noise(noise);
+                let their_action = actions[&(n.coord, curr.coord)].with_noise(noise);
                 curr.score(n, their_action, Environment::score(my_action, their_action));
             }
         });
@@ -148,12 +164,17 @@ impl Environment {
         }
     }
 
-    pub fn new(num_row: usize, num_col: usize) -> Environment {
+    pub fn new(num_row: usize, num_col: usize, noise: f32) -> Environment {
         let strategies = vec![Strategy::Deflect, Strategy::TicToc];
-        Environment::new_with_agent_func(num_row, num_col, |c| Agent::random(c, &strategies))
+        Environment::new_with_agent_func(num_row, num_col, noise, |c| Agent::random(c, &strategies))
     }
 
-    pub fn new_with_agent_func<F>(num_row: usize, num_col: usize, mut agent_fn: F) -> Environment
+    pub fn new_with_agent_func<F>(
+        num_row: usize,
+        num_col: usize,
+        noise: f32,
+        mut agent_fn: F,
+    ) -> Environment
     where
         F: FnMut(Coord) -> Agent,
     {
@@ -167,6 +188,7 @@ impl Environment {
         Environment {
             num_row,
             num_col,
+            noise,
             grid,
         }
     }
