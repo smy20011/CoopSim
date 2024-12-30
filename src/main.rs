@@ -15,10 +15,10 @@ enum UiState {
 }
 
 fn main() {
-    let mut env = Environment::new_with_agent_func(50, 50, 0.4, |c| {
+    let mut env = Environment::new_with_agent_func(50, 50, 0.1, |c| {
         let rand: f32 = thread_rng().gen();
-        let prob_coop = 0.10;
-        let prob_random = 0.00;
+        let prob_coop = 0.00;
+        let prob_random = 0.10;
         let prob_tic = 0.40;
 
         let strategy = if rand < prob_coop {
@@ -73,6 +73,14 @@ fn main() {
                     },
                     KeyCode::Esc => {
                         ui_state = UiState::Latest;
+                    }
+                    KeyCode::Home => {
+                        ui_state = UiState::Detach;
+                        detach_step = 0;
+                    }
+                    KeyCode::End => {
+                        ui_state = UiState::Detach;
+                        detach_step = buffer.len().saturating_sub(1);
                     }
                     _ => {}
                 }
